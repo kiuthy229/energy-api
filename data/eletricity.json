@@ -1,0 +1,35 @@
+{
+  "rows": [
+    {
+      "accountId": "A123",
+      "meterId": "EMTR001",
+      "type": "fixed",
+      "startDate": "2025-08-01",
+      "endDate": "2025-08-31",
+      "electricity_kwh": 350,
+      "gas_mj": 12000
+    },
+    {
+      "accountId": "B456",
+      "meterId": "EMTR002",
+      "type": "interval",
+      "startDate": "2025-08-01",
+      "endDate": "2025-08-02",
+      "interval_data": [
+        { "timestamp": "2025-08-01T00:00", "kWh": 1.2, "tariff": "offpeak" },
+        { "timestamp": "2025-08-01T08:00", "kWh": 0.8, "tariff": "shoulder" },
+        { "timestamp": "2025-08-01T18:00", "kWh": 2.1, "tariff": "peak" },
+        { "timestamp": "2025-08-02T07:00", "kWh": 1.5, "tariff": "shoulder" },
+        { "timestamp": "2025-08-02T19:00", "kWh": 2.3, "tariff": "peak" }
+      ]
+    },
+    {
+      "accountId": "C789",
+      "meterId": "GMTR001",
+      "type": "fixed",
+      "startDate": "2025-07-15",
+      "endDate": "2025-07-31",
+      "gas_mj": 8500
+    }
+  ]
+}

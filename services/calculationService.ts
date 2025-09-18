@@ -1,37 +1,41 @@
-import { rawRowSchema, NormalizedRow, RowResult } from '../models/schemas';
+import { NormalizedRow, rawRowSchema, RowResult } from '../models/schemas';
 import { env } from '../config/env';
-import { inclusiveDays, round2 } from '../utils/dateUtils';
+import { inclusiveDays, round2 } from '../helpers';
 
 export function normalizeAndValidateRow(raw: any): NormalizedRow {
+  // Validate against Zod schema (already typed properly if JSON)
   const parsed = rawRowSchema.parse(raw);
-  const r: NormalizedRow = {
-    accountId: parsed.accountId,
-    meterId: parsed.meterId,
-    startDate: parsed.startDate,
-    endDate: parsed.endDate,
-    electricity_kwh: parsed.electricity_kwh != null && parsed.electricity_kwh !== '' ? Number(parsed.electricity_kwh) : undefined,
-    gas_mj: parsed.gas_mj != null && parsed.gas_mj !== '' ? Number(parsed.gas_mj) : undefined,
-  };
-  if ((r.electricity_kwh == null || Number.isNaN(r.electricity_kwh)) && (r.gas_mj == null || Number.isNaN(r.gas_mj))) {
-    throw new Error(`Row for accountId=${r.accountId} must contain electricity_kwh or gas_mj`);
-  }
-  const s = new Date(r.startDate);
-  const e = new Date(r.endDate);
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) throw new Error(`Invalid dates for accountId=${r.accountId}`);
-  return r;
+  return parsed; // Already normalized
 }
 
-export function calculateRow(row: NormalizedRow): RowResult {
+export function calculateRow(row: any): RowResult {
   const days = inclusiveDays(row.startDate, row.endDate);
+
   let electricity_cost = 0;
+  if (row.type === 'fixed' && row.electricity_kwh != null) {
+    electricity_cost =
+      row.electricity_kwh * env.ELECTRICITY_RATE +
+      env.ELECTRICITY_DAILY_CHARGE * days;
+  } else if (row.type === 'interval' && row.interval_data) {
+    for (const entry of row.interval_data) {
+      const rate =
+        entry.tariff === 'peak'
+          ? env.ELECTRICITY_RATE_PEAK
+          : entry.tariff === 'shoulder'
+          ? env.ELECTRICITY_RATE_SHOULDER
+          : env.ELECTRICITY_RATE_OFFPEAK;
+      electricity_cost += entry.kWh * rate;
+    }
+    electricity_cost += env.ELECTRICITY_DAILY_CHARGE * days;
+  }
+
   let gas_cost = 0;
-  if (row.electricity_kwh != null) {
-    electricity_cost = (row.electricity_kwh * env.ELECTRICITY_RATE) + (env.ELECTRICITY_DAILY_CHARGE * days);
-  }
   if (row.gas_mj != null) {
-    gas_cost = (row.gas_mj * env.GAS_RATE) + (env.GAS_DAILY_CHARGE * days);
+    gas_cost = row.gas_mj * env.GAS_RATE + env.GAS_DAILY_CHARGE * days;
   }
+
   const total = round2(electricity_cost + gas_cost);
+
   return {
     accountId: row.accountId,
     meterId: row.meterId,
