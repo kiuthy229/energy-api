@@ -3,6 +3,17 @@ import { env } from '../config/env';
 import { inclusiveDays, round2 } from '../helpers';
 
 export function normalizeAndValidateRow(raw: any): NormalizedRow {
+  if (raw.type === 'fixed') {
+    if (
+      (raw.electricity_kwh == null || Number.isNaN(raw.electricity_kwh)) &&
+      (raw.gas_mj == null || Number.isNaN(raw.gas_mj))
+    ) {
+      throw new Error(
+        `Row for accountId=${raw.accountId} must contain electricity_kwh or gas_mj`
+      );
+    }
+  }
+
   // Validate against Zod schema (already typed properly if JSON)
   const parsed = rawRowSchema.parse(raw);
   return parsed; // Already normalized
